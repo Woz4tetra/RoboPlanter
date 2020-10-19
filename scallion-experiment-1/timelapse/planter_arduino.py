@@ -132,12 +132,16 @@ class PlanterArduino:
         return self.lights_state
 
     def set_grow_light(self, state):
+        state = bool(state)
+        logger.debug("Received grow light state: %s" % state)
         if state != self.lights_state:
             self.lights_state = state
             logger.info("Setting lights to %s" % self.lights_state)
             self.write("light", int(self.lights_state))
 
     def set_pump(self, state):
+        state = bool(state)
+        logger.debug("Received pump state: %s" % state)
         if state != self.pump_state:
             self.pump_state = state
             logger.info("Setting pump to %s" % self.pump_state)

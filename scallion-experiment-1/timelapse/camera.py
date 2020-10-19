@@ -6,8 +6,9 @@ class Camera:
     def __init__(self, resolution):
         self.camera = picamera.PiCamera()
         self.camera.resolution = resolution
-        self.camera.hflip = True
-        self.camera.vflip = True
+        # self.camera.hflip = True
+        # self.camera.vflip = True
+        self.camera.rotation = 90
         self.raw_capture = PiRGBArray(self.camera, size=self.camera.resolution)
 
     def take_photo(self):

@@ -16,7 +16,7 @@ class Session:
         resolution = (2208, 1712)
 
         self.lights_on_date_range = [7, 18]  # time of day in hours
-        self.pump_on_time = 60.0  # seconds
+        self.pump_on_time = 30.0  # seconds
         self.pump_on_hours = [5, 12, 17, 22]  # time of day in hours
 
         self.camera = Camera(resolution)
@@ -99,7 +99,8 @@ class Session:
         stop_hour = self.lights_on_date_range[1]
         while True:
             now = datetime.datetime.now()
-            self.planter_arduino.set_grow_light(start_hour <= now.hour < stop_hour)
+            if not self.timelapse.is_taking_a_photo:
+                self.planter_arduino.set_grow_light(start_hour <= now.hour < stop_hour)
             await asyncio.sleep(self.lights_check_delay)
 
 
@@ -141,7 +142,7 @@ def main():
         except ValueError:
             pass
 
-    session = Session(3600.0)
+    session = Session(60.0)
     session.run()
 
 

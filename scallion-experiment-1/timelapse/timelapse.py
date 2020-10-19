@@ -29,6 +29,7 @@ class Timelapse:
 
         self.session = session
         self.planter_arduino = None
+        self.is_taking_a_photo = False
 
     def start(self):
         self.planter_arduino = self.session.planter_arduino
@@ -48,6 +49,7 @@ class Timelapse:
             logger.info("Stopping timelapse")
 
     async def take_photo(self):
+        self.is_taking_a_photo = True
         lights_were_on = self.planter_arduino.get_grow_light()
         if not lights_were_on:
             self.planter_arduino.set_grow_light(True)
@@ -59,6 +61,8 @@ class Timelapse:
         if not lights_were_on:
             await asyncio.sleep(0.5)
             self.planter_arduino.set_grow_light(False)
+
+        self.is_taking_a_photo = False
 
         out_name_timestamp = now.strftime(self.out_name_timestamp_format)
 
