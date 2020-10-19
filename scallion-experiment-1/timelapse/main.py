@@ -24,7 +24,7 @@ class Session:
         self.planter_arduino = PlanterArduino(self)
 
         self.pump_check_delay = 60.0
-        self.lights_check_delay = 3600.0
+        self.lights_check_delay = 60.0
         self.update_delay = 1.0 / 20.0
 
         self.loop = asyncio.get_event_loop()
@@ -51,14 +51,15 @@ class Session:
     def run(self):
         try:
             self.start()
-            self.loop.run_until_complete(asyncio.wait(self.tasks, return_when=asyncio.FIRST_EXCEPTION))
+            self.loop.run_until_complete(asyncio.wait(self.tasks, return_when=asyncio.ALL_COMPLETED))
+            # FIRST_EXCEPTION
+            # FIRST_COMPLETED
+            # ALL_COMPLETED
         except BaseException as e:
-            raise
+            logger.error(str(e), exc_info=True)
+
         finally:
             self.stop()
-
-        # FIRST_COMPLETED
-        # ALL_COMPLETED
 
         for task in self.tasks:
             if self.check_task_result(task):
@@ -70,38 +71,50 @@ class Session:
         if 0 <= current_hour < self.pump_on_hours[0] or self.pump_on_hours[-1] <= current_hour < 24:
             return len(self.pump_on_hours) - 1
         else:
-            for index in range(0, len(self.pump_on_hours - 1)):
+            for index in range(0, len(self.pump_on_hours) - 1):
                 start = self.pump_on_hours[index]
                 stop = self.pump_on_hours[index + 1]
-                if start <= hour < stop:
+                if start <= current_hour < stop:
                     return index
         raise Exception("Invalid hour received: %s" % current_hour)
 
     async def check_pump(self):
         logger.info("check_pump task started")
         prev_segment = None
-        while True:
-            now = datetime.datetime.now()
-            current_segment = self.get_pump_segment(now)
+        try:
+            while True:
+                now = datetime.datetime.now()
+                current_segment = self.get_pump_segment(now)
+                logger.info("current_segment: %s" % current_segment)
 
-            if current_segment != prev_segment:
-                self.planter_arduino.set_pump(True)
-                await asyncio.sleep(self.pump_on_time)
-                self.planter_arduino.set_pump(False)
+                if current_segment != prev_segment:
+                    logger.info("It's past %s. Activating pump." % self.pump_on_hours[current_segment])
+                    self.planter_arduino.set_pump(True)
+                    await asyncio.sleep(self.pump_on_time)
+                    self.planter_arduino.set_pump(False)
 
-                prev_segment = current_segment
+                    prev_segment = current_segment
 
-            await asyncio.sleep(self.pump_check_delay)
+                await asyncio.sleep(self.pump_check_delay)
+        except BaseException as e:
+            logger.error(str(e), exc_info=True)
 
     async def check_lights(self):
-        logger.info("check_lights task started")
-        start_hour = self.lights_on_date_range[0]
-        stop_hour = self.lights_on_date_range[1]
-        while True:
-            now = datetime.datetime.now()
-            if not self.timelapse.is_taking_a_photo:
-                self.planter_arduino.set_grow_light(start_hour <= now.hour < stop_hour)
-            await asyncio.sleep(self.lights_check_delay)
+        try:
+            logger.info("check_lights task started")
+            start_hour = self.lights_on_date_range[0]
+            stop_hour = self.lights_on_date_range[1]
+            while True:
+                now = datetime.datetime.now()
+                if not self.timelapse.is_taking_a_photo:
+                    if start_hour <= now.hour < stop_hour:
+                        self.planter_arduino.set_grow_light(True)
+                        logger.info("Time to turn on the lights. %s <= %s < %s" % (start_hour, now.hour, stop_hour))
+                    await asyncio.sleep(self.lights_check_delay)
+                else:
+                    await asyncio.sleep(0.5)
+        except BaseException as e:
+            logger.error(str(e), exc_info=True)
 
 
     async def run_arduino(self):
@@ -142,7 +155,7 @@ def main():
         except ValueError:
             pass
 
-    session = Session(60.0)
+    session = Session(5 * 60.0)
     session.run()
 
 

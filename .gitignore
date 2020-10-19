@@ -130,3 +130,5 @@ dmypy.json
 
 logs/
 scallion-experiment-1/timelapse-images/
+*.avi
+*.mp4

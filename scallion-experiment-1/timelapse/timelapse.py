@@ -53,13 +53,13 @@ class Timelapse:
         lights_were_on = self.planter_arduino.get_grow_light()
         if not lights_were_on:
             self.planter_arduino.set_grow_light(True)
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(3.0)
 
         image = self.camera.take_photo()
         now = datetime.datetime.now()
 
         if not lights_were_on:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.25)
             self.planter_arduino.set_grow_light(False)
 
         self.is_taking_a_photo = False
