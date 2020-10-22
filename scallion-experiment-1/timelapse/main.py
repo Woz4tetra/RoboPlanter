@@ -110,6 +110,9 @@ class Session:
                     if start_hour <= now.hour < stop_hour:
                         self.planter_arduino.set_grow_light(True)
                         logger.info("Time to turn on the lights. %s <= %s < %s" % (start_hour, now.hour, stop_hour))
+                    else:
+                        self.planter_arduino.set_grow_light(False)
+                        logger.info("Time to turn off the lights. %s <= %s < %s" % (start_hour, now.hour, stop_hour))
                     await asyncio.sleep(self.lights_check_delay)
                 else:
                     await asyncio.sleep(0.5)

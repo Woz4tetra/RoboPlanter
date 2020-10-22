@@ -21,6 +21,8 @@ class DevicePort:
         self.baud = baud
         self.timeout = timeout
         self.write_timeout = write_timeout
+        self.read_attempts = 5
+        self.write_attempts = 5
 
         # from https://www.raspberrypi.org/forums/viewtopic.php?t=61955
         self.out_buf_max_bytes = 16 * 12
@@ -48,12 +50,25 @@ class DevicePort:
                 return
         logger.info("%s is ready" % self.address)
 
+    def reopen(self):
+        self.stop()
+        self.configure()
+
     def write(self, packet: bytes):
         if not self.device:
             raise DevicePortWriteException("Device '%s' was never opened for writing" % self.address)
         if not self.is_open():
             raise DevicePortWriteException("Device '%s' is not open for writing" % self.address)
-        self.device.write(packet)
+
+        e = None
+        for _ in range(self.write_attempts):
+            try:
+                self.device.write(packet)
+                break
+            except OSError as e:
+                self.reopen()
+        if e is not None:
+            raise e
 
     def out_waiting(self):
         """
@@ -82,12 +97,20 @@ class DevicePort:
         return self.device is not None and self.device.isOpen()
 
     def read(self, size=None):
-        if self.device.isOpen():
-            if size is None:
-                size = self.in_waiting()
-            return self.device.read(size)
-        else:
-            raise DevicePortReadException("Serial port wasn't open for reading...")
+        e = None
+        for _ in range(self.read_attempts):
+            try:
+                if self.device.isOpen():
+                    if size is None:
+                        size = self.in_waiting()
+                    return self.device.read(size)
+                else:
+                    raise DevicePortReadException("Serial port wasn't open for reading...")
+                break
+            except OSError as e:
+                self.reopen()
+        if e is not None:
+            raise e
 
     def readline(self):
         return self.device.readline()
